@@ -21,14 +21,14 @@ api = Api(app)
 class ClearSession(Resource):
 
     def delete(self):
-    
+
         session['page_views'] = None
         session['user_id'] = None
 
         return {}, 204
 
 class IndexArticle(Resource):
-    
+
     def get(self):
         articles = [article.to_dict() for article in Article.query.all()]
         return make_response(jsonify(articles), 200)
@@ -54,12 +54,12 @@ class ShowArticle(Resource):
 class Login(Resource):
 
     def post(self):
-        
+
         username = request.get_json().get('username')
         user = User.query.filter(User.username == username).first()
 
         if user:
-        
+
             session['user_id'] = user.id
             return user.to_dict(), 200
 
@@ -70,29 +70,43 @@ class Logout(Resource):
     def delete(self):
 
         session['user_id'] = None
-        
+
         return {}, 204
 
 class CheckSession(Resource):
 
     def get(self):
-        
+
         user_id = session['user_id']
         if user_id:
             user = User.query.filter(User.id == user_id).first()
             return user.to_dict(), 200
-        
+
         return {}, 401
 
 class MemberOnlyIndex(Resource):
-    
+
     def get(self):
-        pass
+        user_id = session.get('user_id')
+        if not user_id:
+            return {"message": "401: Unauthorizes"},401
+        articles = Article.query.filter_by(is_member_only=True).all()
+        article_dict = [article.to_dict() for article in articles]
+        return make_response(jsonify(article_dict), 200)
+
 
 class MemberOnlyArticle(Resource):
-    
+
     def get(self, id):
-        pass
+        user_id = session.get('user_id')
+        if not user_id:
+            return {"message": "Unaouthorized"}, 401
+        article = Article.query.get(id)
+        if article and article.is_member_only:
+            return article.to_dict(), 200
+        else:
+            return {"message": "Article not found or access denied"}, 404
+
 
 api.add_resource(ClearSession, '/clear', endpoint='clear')
 api.add_resource(IndexArticle, '/articles', endpoint='article_list')
